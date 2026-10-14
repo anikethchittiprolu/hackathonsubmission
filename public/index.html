@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VYOM — Hackathon Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="anon">
+<header class="top"><div class="wrap">
+  <span class="brand" id="brand">VYOM</span>
+  <nav class="tabs" id="nav">
+    <button data-go="live" class="on">Live</button><button data-go="timetable">Timetable</button><button data-go="problems">Problem statements</button><button data-go="submit">My submission</button><button data-go="info">Rules &amp; FAQ</button>
+  </nav>
+  <span class="sp"></span><span class="clock" id="clock"></span>
+  <button class="btn sec sm hide" id="logoutBtn">Sign out</button>
+</div></header>
+
+<main class="wrap">
+  <section id="live" class="hero">
+    <div class="orbit" aria-hidden="true"><svg viewBox="0 0 200 200"><defs><radialGradient id="pl" cx="35%" cy="30%"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#1b1445"/></radialGradient></defs><circle cx="100" cy="100" r="34" fill="url(#pl)"/><ellipse class="ring" cx="100" cy="100" rx="78" ry="22" fill="none" stroke="#6ee7ff" stroke-opacity=".55" stroke-width="2"/><g class="sat"><circle cx="100" cy="100" r="4" fill="#6ee7ff"/></g></svg></div>
+    <div class="college" id="evCollege"></div><div class="sub" id="evSub"></div>
+    <h1 id="evName">VYOM</h1><div class="fmt" id="evFmt"></div><p id="evTag"></p>
+    <div class="chips" id="chips"></div><div class="mission" id="mission"></div>
+    <div><span class="phase" id="phase">…</span></div>
+    <div class="cd" id="cd"></div>
+    <div class="bar" style="max-width:640px;margin:0 auto"><i id="prog" style="width:0"></i></div>
+    <p class="mini" id="progLbl" style="margin-top:8px"></p>
+    <div class="grid g3" style="margin-top:26px;text-align:left" id="nowNext"></div>
+  </section>
+
+  <section id="annSec"><h2>Mission control</h2><div id="anns"></div></section>
+
+  <section id="timetable"><h2>Mission timeline <span class="mini" id="tzLbl"></span></h2><div class="card" id="tt"></div></section>
+
+  <section id="problems"><h2>Mission briefs <span class="mini">· choose your problem statement</span></h2><div class="card" id="psBar" style="margin-bottom:14px"></div><div class="grid g2" id="probs"></div></section>
+
+  <section id="submit" class="collapsed">
+    <h2 class="noanon toggle" id="subToggle" role="button" tabindex="0" aria-expanded="false"><span class="chev">▸</span> Submission portal <span class="tag" id="subBadge" style="font-family:'Space Grotesk',sans-serif;letter-spacing:0"></span><span class="mini" id="subHint">· click to open</span></h2>
+
+    <div id="authBox" class="card" style="max-width:420px;margin:0 auto">
+      <h3>Team sign-in</h3>
+      <p class="mini">Use the team ID and password the organisers gave your team (e.g. <code>VYOM-014</code>). The whole team shares one login.</p>
+      <form id="authForm">
+        <label>Team ID</label><input name="login" autocomplete="username" autocapitalize="characters" required style="text-transform:uppercase;letter-spacing:.1em">
+        <label>Password</label><input name="password" type="password" autocomplete="current-password" required>
+        <div id="authMsg"></div>
+        <button class="btn" style="margin-top:6px">Sign in</button>
+      </form>
+    </div>
+
+    <div id="portal" class="hide">
+      <div class="card" style="margin-bottom:16px">
+        <div class="flex"><div style="flex:1"><h3 style="margin:0">Team</h3><b id="teamName" style="font-size:20px"></b><div class="mini" id="teamMeta"></div></div>
+        <div style="text-align:center"><div class="mini">TABLE</div><b id="tableNo" style="font-size:26px">—</b></div>
+        <div><span class="tag" id="ciTag"></span> <span class="tag" id="stateTag"></span></div></div>
+        <div class="mini" id="lockNote" style="margin-top:8px"></div>
+      </div>
+      <div class="grid g2" style="align-items:start">
+        <form class="card" id="subForm">
+          <h3>Project details</h3>
+          <label>Project title *</label><input name="title" maxlength="100">
+          <label>One-line pitch</label><input name="tagline" maxlength="140" placeholder="What does it do, for whom?">
+          <div class="row"><div><label>Your problem statement</label><input id="psShow" disabled></div><div><label>Tech stack</label><input name="tech" maxlength="300" placeholder="React, FastAPI, Arduino…"></div></div>
+          <label>Description * <span class="mini" id="descCount"></span></label><textarea name="description" maxlength="4000" placeholder="Problem, solution, how it works, what you built during the hackathon…"></textarea>
+          <h3 style="margin-top:20px">Links</h3>
+          <label>GitHub repository * <span class="mini">(public, or invite the organisers)</span></label><input name="github" placeholder="https://github.com/team/project">
+          <div class="row"><div><label>Live demo URL</label><input name="demo" placeholder="https://…"></div><div><label>Demo video URL (YouTube / Drive / Loom)</label><input name="video" placeholder="https://…"></div></div>
+          <div class="row"><div><label>Pitch deck link * <span class="mini">(Canva recommended)</span></label><input name="deck" placeholder="https://www.canva.com/design/…"></div><div><label>Docs / report link</label><input name="docs" placeholder="Notion, Drive, README…"></div></div>
+          <label>Anything else for the jury?</label><textarea name="extra" maxlength="1000" style="min-height:60px"></textarea>
+          <div id="subMsg"></div>
+          <div class="flex" style="margin-top:12px">
+            <button type="button" class="btn sec" id="saveBtn">Save draft</button>
+            <button type="button" class="btn" id="finalBtn">Save &amp; mark as final</button>
+            <button type="button" class="btn sec hide" id="reopenBtn">Re-open for edits</button>
+          </div>
+        </form>
+
+        <div class="grid">
+          <div class="card" id="perkCard"><h3>Team perk 🎁</h3><div id="perkBody"></div></div>
+          <div class="card"><h3>Checklist</h3><ul class="check" id="checklist"></ul></div>
+          <div class="card">
+            <h3>Pitch deck <span class="mini">(.pptx / .ppt / .pdf · one file · or just paste a Canva link on the left)</span></h3>
+            <div class="drop" data-kind="deck">Drop your presentation here or click to choose<input type="file" accept=".ppt,.pptx,.pdf" hidden></div>
+            <div data-msg="deck"></div><div data-list="deck"></div>
+          </div>
+          <div class="card">
+            <h3>Other files <span class="mini">(docs, ZIP, images, MP4 · 25&nbsp;MB per upload · up to 8)</span></h3>
+            <div class="drop" data-kind="other">Drop files here or click to choose<input type="file" multiple hidden></div>
+            <div data-msg="other"></div><div data-list="other"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section id="info"><h2>Rules &amp; FAQ</h2><div class="card"><div id="rules" style="white-space:pre-wrap"></div><div id="faq" style="margin-top:14px"></div></div></section>
+</main>
+<footer><div id="contacts" class="contacts"></div><p>VYOM · times shown in <span id="tzFoot"></span></p></footer>
+
+<script src="/common.js"></script>
+<script src="/fx.js"></script>
+<script>
+let D = null;           // /api/public payload
+let ME = null;          // /api/me payload
+let mode = 'reg';
+const locked = () => D && nowMs() > D.event.deadline;
+
+/* ---------- live data ---------- */
+async function loadPublic() {
+  D = await api('/api/public'); syncClock(D.now); setTZ(D.event.timezone);
+  $('#brand').textContent = D.event.name; $('#evName').textContent = D.event.name; $('#evTag').textContent = D.event.tagline || '';
+  document.title = D.event.name + ' — Hackathon Portal';
+  $('#tzLbl').textContent = '· ' + D.event.timezone; $('#tzFoot').textContent = D.event.timezone;
+  $('#anns').innerHTML = D.announcements.length ? D.announcements.map((a) =>
+    `<div class="ann ${a.pinned ? 'pin' : ''}">${a.pinned ? '📌 ' : ''}${esc(a.body)}<time>${fmtDT(a.created_at)}</time></div>`).join('') : '<p class="mini">Nothing yet.</p>';
+  $('#rules').textContent = D.event.rules || ''; $('#faq').innerHTML = (D.event.faq || []).map((f) => `<details style="margin:6px 0"><summary><b>${esc(f.q)}</b></summary><p class="mini" style="margin:6px 0 0 14px">${esc(f.a)}</p></details>`).join('');
+  const E2 = D.event; $('#evCollege').textContent = E2.college || ''; $('#evSub').textContent = E2.subtitle || ''; $('#evFmt').textContent = E2.format || '';
+  $('#chips').innerHTML = [['📅', `${fmtDay(E2.start).replace(/^\w+,\s*/, '')} – ${fmtDay(E2.end).replace(/^\w+,\s*/, '')}`], ['⏰', `${fmtTime(E2.start)} – ${fmtTime(E2.end)} (${Math.round((E2.end - E2.start) / 36e5)} hours)`], ['📍', E2.college], ['👥', `${E2.minTeam}–${E2.maxTeam} members`]].map(([i, t]) => `<span class="chip">${i} ${esc(t)}</span>`).join('');
+  $('#mission').innerHTML = `<small>YOUR MISSION</small>` + (E2.mission || []).map((m) => `<b>${esc(m)}</b>`).join('');
+  $('#contacts').innerHTML = (E2.contacts || []).length ? '<span class="mini" style="width:100%;color:inherit">Need help? Student coordinators:</span>' + E2.contacts.map((c) => `<a href="tel:${esc(c.phone)}">📞 ${esc(c.name)} · ${esc(c.phone)}</a>`).join('') : '';
+  renderProblems();
+  tick();
+}
+
+function renderProblems() {
+  const P = D.event.problems, t = ME?.team, max = D.event.maxPsChanges, cur = t?.ps || '', lockedPs = !!t?.jury_visited, left = t ? t.psChangesLeft : max;
+  $('#psBar').style.display = t ? '' : 'none';
+  if (t) $('#psBar').innerHTML = cur
+    ? `<div class="flex"><span class="tag ok">SELECTED</span><b>${esc(cur)}</b><span class="sp"></span><span class="mini">${lockedPs ? '🔒 Locked — jury has visited your table' : `Changes left: <b>${left}</b> of ${max}`}</span></div>`
+    : `<div class="flex"><span class="tag warn">NOT CHOSEN YET</span><span class="mini">Pick one below. After your first pick you can change it up to ${max} times, until the jury visits your table.</span></div>`;
+  $('#probs').innerHTML = P.map((x, i) => `<div class="card ps ${x.title === cur ? 'sel' : ''}"><h3>Brief ${String(i + 1).padStart(2, '0')} ${x.track ? `<span class="tag tk">${esc(x.track)}</span>` : ''}</h3><b>${esc(x.title)}</b><p class="mini" style="white-space:pre-wrap;margin:8px 0 12px">${esc(x.desc)}</p>
+    ${t ? (x.title === cur ? '<span class="tag ok">YOUR MISSION</span>' : `<button class="btn sm" data-ps="${i}" ${lockedPs || (cur && left <= 0) ? 'disabled' : ''}>${cur ? 'Switch to this' : 'Select this'}</button>`) : ''}</div>`).join('') || '<p class="mini">Briefs will be announced soon.</p>';
+}
+$('#probs').onclick = async (e) => {
+  const i = e.target.dataset.ps; if (i === undefined) return; const x = D.event.problems[i], cur = ME.team.ps;
+  const warn = cur ? `Switch to “${x.title}”? This uses one of your ${ME.team.psChangesLeft} remaining changes.` : `Select “${x.title}”? You can change it up to ${D.event.maxPsChanges} times later.`;
+  if (!confirm(warn)) return;
+  try { await api('/api/problem', { method: 'POST', body: { title: x.title } }); ME = await api('/api/me'); renderSub(); renderProblems(); } catch (er) { alert(er.message); renderProblems(); }
+};
+
+function tick() {
+  if (!D) return; const e = D.event, n = nowMs();
+  $('#clock').textContent = new Date(n).toLocaleTimeString('en-IN', { timeZone: TZ, hour12: true });
+  let label, target, from, to, cls = '';
+  if (n < e.start) { label = 'T-minus to liftoff'; target = e.start; from = e.start - 7 * 864e5; to = e.start; }
+  else if (n < e.deadline) { label = 'Mission live · submissions close in'; target = e.deadline; from = e.start; to = e.deadline; cls = 'live'; }
+  else if (n < e.end) { label = 'Submissions sealed · jury phase ends in'; target = e.end; from = e.deadline; to = e.end; }
+  else { label = 'Mission complete'; target = n; from = 0; to = 1; cls = 'end'; }
+  $('#phase').textContent = label; $('#phase').className = 'phase ' + cls;
+  const p = parts(target - n);
+  const cdv = ['d', 'h', 'm', 's'].map((k) => pad(p[k]));
+  $('#cd').innerHTML = [['d', 'days'], ['h', 'hours'], ['m', 'min'], ['s', 'sec']].map(([k, l], i) => `<div><b class="${window.__cd && window.__cd[i] !== cdv[i] ? 'flip' : ''}">${cdv[i]}</b><span>${l}</span></div>`).join(''); window.__cd = cdv;
+  const pct = cls === 'end' ? 100 : Math.max(0, Math.min(100, ((n - from) / (to - from)) * 100));
+  $('#prog').style.width = pct + '%';
+  $('#progLbl').textContent = n < e.start ? `Starts ${fmtDT(e.start)}` : `Deadline ${fmtDT(e.deadline)} · Ends ${fmtDT(e.end)}`;
+  renderTT(n); renderSubHeader();
+}
+
+function renderTT(n) {
+  const items = D.schedule; const isNow = (i) => n >= i.start && n < (i.end || i.start + 15 * 60e3);
+  const next = items.find((i) => i.start > n);
+  const cur = items.filter(isNow);
+  $('#nowNext').innerHTML = [
+    ['Happening now', cur.length ? cur.map((i) => `<b>${esc(i.title)}</b><div class="mini">${esc(i.location)} · until ${i.end ? fmtTime(i.end) : '—'}</div>`).join('') : '<span class="mini">Nothing scheduled right now</span>'],
+    ['Up next', next ? `<b>${esc(next.title)}</b><div class="mini">${esc(next.location)} · ${fmtDay(next.start) === fmtDay(n) ? 'today' : fmtDay(next.start)} ${fmtTime(next.start)} · in ${human(next.start - n)}</div>` : '<span class="mini">That’s everything!</span>'],
+    ['Time left to submit', n < D.event.deadline ? `<b>${human(D.event.deadline - n)}</b><div class="mini">closes ${fmtDT(D.event.deadline)}</div>` : '<b>Closed</b>'],
+  ].map(([h, b]) => `<div class="card"><h3>${h}</h3>${b}</div>`).join('');
+  let html = '', last = '';
+  for (const i of items) {
+    const k = dayKey(i.start); if (k !== last) { html += `<div class="day">${fmtDay(i.start)}</div>`; last = k; }
+    const past = (i.end || i.start) <= n, now = isNow(i), nx = next && i.id === next.id;
+    html += `<div class="tt ${i.kind} ${past ? 'past' : now ? 'now' : nx ? 'next' : ''}"><div class="t">${fmtTime(i.start)}${i.end ? '<br>– ' + fmtTime(i.end) : ''}</div>
+      <div><div class="n">${esc(i.title)}</div><div class="l">${esc(i.location)}</div></div>
+      ${now ? '<span class="tag now">NOW</span>' : nx ? `<span class="tag">in ${human(i.start - n)}</span>` : past ? '<span class="tag">done</span>' : ''}</div>`;
+  }
+  $('#tt').innerHTML = html || '<p class="mini">Schedule coming soon.</p>';
+}
+
+/* ---------- auth & team details ---------- */
+$('#authForm').onsubmit = async (ev) => {
+  ev.preventDefault(); const f = Object.fromEntries(new FormData(ev.target));
+  try { await api('/api/login', { method: 'POST', body: f }); await loadMe(); }
+  catch (e) { flash($('#authMsg'), e.message, 'err'); }
+};
+$('#logoutBtn').onclick = async () => { await api('/api/logout', { method: 'POST' }); ME = null; showAuth(); };
+
+function showAuth() { document.body.classList.add('anon'); $('#authBox').classList.remove('hide'); $('#portal').classList.add('hide'); $('#logoutBtn').classList.add('hide'); }
+
+async function loadMe() {
+  try { ME = await api('/api/me'); } catch (e) { if (e.status === 401) return showAuth(); throw e; }
+  document.body.classList.remove('anon'); $('#authBox').classList.add('hide'); $('#portal').classList.remove('hide'); $('#logoutBtn').classList.remove('hide');
+  const f = $('#subForm'), s = ME.submission;
+  for (const k of ['title', 'tagline', 'tech', 'description', 'github', 'demo', 'video', 'deck', 'docs', 'extra']) f.elements[k].value = s[k] || '';
+  renderSub(); loadPerks();
+}
+
+/* ---------- submission ---------- */
+function renderSubHeader() {
+  if (!ME) return; const lk = locked();
+  $('#lockNote').textContent = lk ? 'Submissions are closed — your last saved version is what the jury will see.' : `You can edit until ${fmtDT(D.event.deadline)} (${human(D.event.deadline - nowMs())} left).`;
+  for (const el of $$('#subForm input,#subForm textarea,#subForm select,#saveBtn,#finalBtn,#reopenBtn,.drop input')) el.disabled = lk;
+  for (const d of $$('.drop')) d.style.opacity = lk ? .4 : 1;
+}
+function formVals() { return Object.fromEntries(new FormData($('#subForm'))); }
+function renderSub() {
+  const s = ME.submission, f = formVals(); $('#psShow').value = ME.team.ps || '— choose one in Mission briefs —'; renderProblems();
+  $('#teamName').textContent = ME.team.name || ME.team.login; $('#teamMeta').textContent = [ME.team.login, ME.team.members.map((m) => m.name).join(', '), ME.team.college].filter(Boolean).join(' · ');
+  $('#tableNo').textContent = ME.team.table_no || '—'; const ci = $('#ciTag'); ci.className = 'tag ' + (ME.team.checked_in ? 'ok' : ''); ci.textContent = ME.team.checked_in ? 'CHECKED IN' : 'NOT CHECKED IN';
+  { const bd = $('#subBadge'); bd.className = 'tag ' + (s.final ? 'ok' : s.updated_at ? 'warn' : ''); bd.textContent = s.final ? 'FINAL SUBMITTED' : s.updated_at ? 'DRAFT' : 'NOT STARTED'; }
+  const tag = $('#stateTag'); tag.className = 'tag ' + (s.final ? 'ok' : 'warn'); tag.textContent = s.final ? 'FINAL SUBMITTED' : s.updated_at ? 'DRAFT' : 'NOT STARTED';
+  $('#finalBtn').classList.toggle('hide', !!s.final); $('#reopenBtn').classList.toggle('hide', !s.final);
+  const chk = [['Project title', f.title], ['Problem statement chosen', ME.team.ps], ['Description (40+ chars)', (f.description || '').length >= 40], ['GitHub repository', f.github], ['Pitch deck (link or uploaded file)', f.deck || s.files.some((x) => x.kind === 'deck')]];
+  $('#checklist').innerHTML = chk.map(([l, ok]) => `<li class="${ok ? 'done' : ''}">${l}</li>`).join('');
+  $('#descCount').textContent = `${(f.description || '').length}/4000`;
+  for (const k of ['deck', 'other']) $(`[data-list=${k}]`).innerHTML = s.files.filter((x) => (x.kind || 'other') === k).map((x) => `<div class="file"><span>📎 ${esc(x.orig_name)}</span><span class="mini">${fmtSize(x.size)}</span>
+    <a class="btn sec sm" href="/files/${x.id}">Download</a><button type="button" class="btn bad sm" data-del="${x.id}" ${locked() ? 'disabled' : ''}>✕</button></div>`).join('');
+  renderSubHeader();
+}
+$('#subForm').addEventListener('input', () => ME && renderSub());
+async function save(final) {
+  const body = { ...formVals(), final }; const m = $('#subMsg'); const was = ME.submission.final;
+  try {
+    const r = await api('/api/submission', { method: 'PUT', body }); ME.submission = r.submission; renderSub(); loadPerks();
+    flash(m, final ? '🚀 Final submission recorded. You can still edit until the deadline.' : 'Draft saved.'); if (final && !was && window.celebrate) celebrate();
+  } catch (e) { flash(m, e.message, 'err'); }
+}
+$('#saveBtn').onclick = () => save(ME.submission.final); // keep final status if already final
+$('#finalBtn').onclick = () => save(true);
+$('#reopenBtn').onclick = () => save(false);
+
+for (const box of $$('.drop')) {
+  const kind = box.dataset.kind, input = $('input', box);
+  box.onclick = (e) => { if (!locked() && e.target !== input) input.click(); };
+  box.ondragover = (e) => { e.preventDefault(); box.classList.add('over'); }; box.ondragleave = () => box.classList.remove('over');
+  box.ondrop = (e) => { e.preventDefault(); box.classList.remove('over'); upload(e.dataTransfer.files, kind); };
+  input.onchange = () => { upload(input.files, kind); input.value = ''; };
+}
+async function upload(list, kind) {
+  if (!list.length || locked()) return; const fd = new FormData(), msg = $(`[data-msg=${kind}]`); for (const f of list) fd.append('file', f, f.name);
+  flash(msg, 'Uploading…');
+  try { const r = await api('/api/submission/files?kind=' + kind, { method: 'POST', body: fd }); ME.submission.files = r.files; renderSub(); flash(msg, 'Uploaded.'); }
+  catch (e) { flash(msg, e.message, 'err'); }
+}
+for (const list of $$('[data-list]')) list.onclick = async (e) => {
+  const id = e.target.dataset.del; if (!id || !confirm('Remove this file?')) return;
+  try { await api('/api/submission/files/' + id, { method: 'DELETE' }); ME.submission.files = ME.submission.files.filter((x) => x.id != id); renderSub(); } catch (er) { flash($(`[data-msg=${list.dataset.list}]`), er.message, 'err'); }
+};
+
+/* ---------- perks ---------- */
+let PERKS = null;
+const perkOpen = {}; // perk name -> details expanded? (default: expanded)
+async function loadPerks() {
+  try { PERKS = await api('/api/perks'); } catch { return; }
+  const b = $('#perkBody'), P = PERKS, full = P.claimed.length >= P.perksPerTeam, mine = (k) => P.claimed.find((c) => c.perk === k);
+  const cp = (v) => `<button type="button" class="btn sec sm" data-copy="${esc(v)}" style="padding:2px 8px;margin-left:8px">Copy</button>`;
+  const detail = (c) => c.kind === 'account'
+    ? `<div class="acct"><div class="h">Log in</div>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.url.replace(/^https?:\/\/(www\.)?/, ''))}</a>` : ''}
+        <dl><dt>Name:</dt><dd>${esc(c.name)}</dd><dt>Username:</dt><dd>${esc(c.username)}${cp(c.username)}</dd><dt>Temporary password:</dt><dd>${esc(c.password)}${cp(c.password)}</dd></dl></div>`
+    : `<div class="file"><span class="mini">One-time link</span><a class="btn sm" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">Open ↗</a></div>`;
+  const head = full ? '<p class="mini">You’ve claimed your team’s perk. The others are now locked.</p>' : !P.unlocked ? '<p class="mini">🔒 Unlocks once the organisers check your team in at the venue.</p>'
+    : `<p class="mini">Pick ${P.perksPerTeam - P.claimed.length} perk${P.perksPerTeam - P.claimed.length > 1 ? 's' : ''} for your team. This can’t be undone.</p>`;
+  b.innerHTML = head + P.perks.map((k) => {
+    const c = mine(k);
+    if (c) { const open = perkOpen[k] !== false; return `<div class="file" style="background:#ecfbf3"><span><b>${esc(k)}</b></span><span class="tag ok">CLAIMED</span><button type="button" class="btn sec sm" data-toggle="${esc(k)}">${open ? '← Back' : 'View details'}</button></div>${open ? detail(c) : ''}`; }
+    if (full) return `<div class="file" style="opacity:.55"><span>🔒 <b>${esc(k)}</b></span><span class="mini">Locked — your team already claimed ${esc(P.claimed.map((x) => x.perk).join(', '))}</span></div>`;
+    if (!P.unlocked) return `<div class="file" style="opacity:.55"><span>🔒 <b>${esc(k)}</b></span><span class="mini">Locked until check-in</span></div>`;
+    return `<div class="file"><span><b>${esc(k)}</b></span><span class="mini">${P.available[k] ? 'available' : 'out of stock'}</span><button class="btn sm" data-perk="${esc(k)}" ${P.available[k] ? '' : 'disabled'}>Claim</button></div>`;
+  }).join('') + '<div id="perkMsg"></div>' + (P.claimed.length ? '<p class="mini">Keep your details safe — they stay available here. One-time links work only once, so redeem with the account you want to keep.</p>' : '');
+}
+$('#perkBody').onclick = async (e) => {
+  if (e.target.dataset.copy) { navigator.clipboard?.writeText(e.target.dataset.copy); e.target.textContent = 'Copied'; return; }
+  const t = e.target.dataset.toggle; if (t) { perkOpen[t] = perkOpen[t] === false; loadPerks(); return; }
+  const k = e.target.dataset.perk; if (!k || !confirm(`Claim “${k}” for your team? You can only choose once.`)) return;
+  try { await api('/api/perks/claim', { method: 'POST', body: { perk: k } }); perkOpen[k] = true; await loadPerks(); } catch (er) { flash($('#perkMsg'), er.message, 'err'); await loadPerks(); }
+};
+
+/* ---------- nav ---------- */
+function setSub(open) { const sec = $('#submit'); sec.classList.toggle('collapsed', !open); $('#subToggle').setAttribute('aria-expanded', open); $('.chev', sec).textContent = open ? '▾' : '▸'; $('#subHint').textContent = open ? '' : '· click to open'; }
+$('#subToggle').onclick = () => setSub($('#submit').classList.contains('collapsed'));
+$('#subToggle').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#subToggle').click(); } };
+$('#nav').onclick = (e) => { const g = e.target.dataset.go; if (!g) return; if (g === 'submit') setSub(true); document.getElementById(g).scrollIntoView(); };
+
+(async () => { await loadPublic(); await loadMe(); setInterval(tick, 1000); setInterval(() => { loadPublic().catch(() => {}); if (ME) api('/api/me').then((r) => { ME.team = r.team; renderSub(); loadPerks(); }).catch(() => {}); }, 20000); })();
+</script>
+</body>
+</html>

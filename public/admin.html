@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VYOM — Admin</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top noprint"><div class="wrap">
+  <span class="brand">VYOM · ADMIN</span>
+  <nav class="tabs hide" id="nav">
+    <button data-t="overview" class="on">Overview</button><button data-t="subs">Submissions</button><button data-t="scoring">Scoring</button>
+    <button data-t="codes">Team logins</button><button data-t="problems">Problem statements</button><button data-t="perks">Perks</button><button data-t="sched">Schedule</button><button data-t="anns">Announcements</button><button data-t="settings">Settings</button>
+  </nav>
+  <span class="sp"></span><button class="btn sec sm hide" id="logout">Sign out</button>
+</div></header>
+
+<main class="wrap">
+  <div id="login" class="card" style="max-width:380px;margin:80px auto">
+    <h2>Admin sign-in</h2>
+    <form id="loginForm"><label>Password</label><input type="password" name="password" autofocus required><div id="loginMsg"></div><button class="btn" style="margin-top:10px">Sign in</button></form>
+    <p class="mini">Password is printed in the terminal when the server starts (also saved in <code>data/admin_password.txt</code>).</p>
+  </div>
+
+  <div id="app" class="hide">
+    <section data-pane="overview"></section>
+    <section data-pane="subs" class="hide"></section>
+    <section data-pane="scoring" class="hide"></section>
+    <section data-pane="codes" class="hide"></section>
+    <section data-pane="problems" class="hide"></section>
+    <section data-pane="perks" class="hide"></section>
+    <section data-pane="sched" class="hide"></section>
+    <section data-pane="anns" class="hide"></section>
+    <section data-pane="settings" class="hide"></section>
+  </div>
+</main>
+
+<dialog id="dlg"></dialog>
+
+<script src="/common.js"></script>
+<script>
+let S = null, pane = 'overview', judge = null;
+const E = () => S.event;
+const tcmp = (a, b) => String(a.table_no || '~').localeCompare(String(b.table_no || '~'), undefined, { numeric: true }) || a.id - b.id;
+const total = (arr) => (arr || []).reduce((a, v) => a + (Number(v) || 0), 0);
+
+async function load() {
+  try { S = await api('/api/admin/state'); } catch (e) { if (e.status === 401) return showLogin(); throw e; }
+  syncClock(S.now); setTZ(E().timezone);
+  $('#login').classList.add('hide'); $('#app').classList.remove('hide'); $('#nav').classList.remove('hide'); $('#logout').classList.remove('hide');
+  if (!judge || !E().judges.includes(judge)) judge = E().judges[0];
+  render();
+}
+function showLogin() { $('#login').classList.remove('hide'); $('#app').classList.add('hide'); $('#nav').classList.add('hide'); $('#logout').classList.add('hide'); }
+$('#loginForm').onsubmit = async (e) => { e.preventDefault(); try { await api('/api/admin/login', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); await load(); } catch (er) { flash($('#loginMsg'), er.message, 'err'); } };
+$('#logout').onclick = async () => { await api('/api/admin/logout', { method: 'POST' }); showLogin(); };
+$('#nav').onclick = (e) => { if (e.target.dataset.t) { pane = e.target.dataset.t; render(); } };
+
+function render() {
+  $$('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.t === pane));
+  $$('[data-pane]').forEach((s) => s.classList.toggle('hide', s.dataset.pane !== pane));
+  ({ overview: rOverview, subs: rSubs, scoring: rScoring, codes: rCodes, problems: rProblems, perks: rPerks, sched: rSched, anns: rAnns, settings: rSettings })[pane]($(`[data-pane=${pane}]`));
+}
+
+/* ---------- overview ---------- */
+function rOverview(el) {
+  const T = S.teams, fin = T.filter((t) => t.final).length, draft = T.filter((t) => !t.final && t.title).length;
+  const byTrack = {}; T.forEach((t) => { if (t.track) byTrack[t.track] = (byTrack[t.track] || 0) + 1; });
+  const n = nowMs(), e = E();
+  el.innerHTML = `<h2>Overview</h2>
+  <div class="grid g3"><div class="card stat"><b>${T.length}</b><span>Teams registered</span></div><div class="card stat"><b>${fin}</b><span>Final submissions</span></div>
+  <div class="card stat"><b>${draft}</b><span>Drafts</span></div><div class="card stat"><b>${T.filter((t) => t.checked_in).length}/${T.length}</b><span>Checked in</span></div><div class="card stat"><b>${T.filter((t) => t.name && t.members.length).length}/${T.length}</b><span>Team details filled</span></div>
+  <div class="card stat"><b>${n < e.deadline ? human(e.deadline - n) : 'Closed'}</b><span>Until deadline</span></div></div>
+  <div class="grid g2" style="margin-top:16px"><div class="card"><h3>By problem statement</h3>${Object.entries(byTrack).map(([k, v]) => `<div class="flex"><span style="flex:1">${esc(k)}</span><b>${v}</b></div>`).join('') || '<span class="mini">No submissions yet</span>'}</div>
+  <div class="card"><h3>Quick actions</h3><div class="flex"><a class="btn" href="/api/admin/export.csv">Download submissions CSV</a><a class="btn sec" href="/" target="_blank">Open participant site ↗</a></div>
+  <p class="mini">Change dates, rubric, perks and rules in Settings.</p></div></div>`;
+}
+
+/* ---------- submissions ---------- */
+let q = '', fstat = 'all';
+function rSubs(el) {
+  el.innerHTML = `<h2>Submissions</h2><div class="flex noprint" style="margin-bottom:12px"><input id="q" placeholder="Search team, ID, title…" style="max-width:300px" value="${esc(q)}">
+    <select id="fs" style="max-width:180px">${['all', 'final', 'draft', 'none'].map((x) => `<option ${x === fstat ? 'selected' : ''} value="${x}">${{ all: 'All', final: 'Final only', draft: 'Drafts', none: 'Not started' }[x]}</option>`).join('')}</select>
+    <span class="sp"></span><a class="btn sec sm" href="/api/admin/export.csv">Export CSV</a></div><div class="card tw" id="stbl"></div>`;
+  $('#q').oninput = (e) => { q = e.target.value; fill(); }; $('#fs').onchange = (e) => { fstat = e.target.value; fill(); };
+  const fill = () => {
+    const rows = S.teams.filter((t) => {
+      const st = t.final ? 'final' : t.title ? 'draft' : 'none'; if (fstat !== 'all' && st !== fstat) return false;
+      return !q || [t.name, t.title, t.login, t.college].join(' ').toLowerCase().includes(q.toLowerCase());
+    });
+    $('#stbl').innerHTML = `<table><tr><th>Table</th><th>In</th><th title="Jury has visited — locks problem-statement changes">Jury</th><th>Team</th><th>Project</th><th>Problem</th><th>Links</th><th>Status</th><th></th></tr>${rows.sort(tcmp).map((t) => `<tr>
+      <td><input class="tbl" data-id="${t.id}" value="${esc(t.table_no)}" style="width:70px;padding:6px" maxlength="20"></td><td><input type="checkbox" class="ci" data-id="${t.id}" ${t.checked_in ? 'checked' : ''} style="width:auto"></td><td><input type="checkbox" class="jv" data-id="${t.id}" ${t.jury_visited ? 'checked' : ''} style="width:auto"></td><td><b>${esc(t.name || '(unnamed)')}</b><div class="mini">${esc(t.login)}</div></td><td>${esc(t.title || '—')}<div class="mini">${esc(t.tagline || '')}</div></td><td>${esc(t.track || '—')}${t.track ? `<div class="mini">${t.ps_changes} change(s) used${t.jury_visited ? ' · locked' : ''}</div>` : ''}</td>
+      <td>${links(t)}</td><td><span class="tag ${t.final ? 'ok' : t.title ? 'warn' : ''}">${t.final ? 'final' : t.title ? 'draft' : 'none'}</span>${t.status && t.status !== 'pending' ? ` <span class="tag ${t.status === 'accepted' ? 'ok' : 'bad'}">${t.status}</span>` : ''}</td>
+      <td><button class="btn sec sm" data-open="${t.id}">Open</button></td></tr>`).join('') || '<tr><td colspan=9 class="mini">No matches</td></tr>'}</table>`;
+  };
+  fill(); el.onclick = (e) => { if (e.target.dataset.open) openTeam(Number(e.target.dataset.open)); };
+  const patch = (id, body) => { const t = S.teams.find((x) => x.id == id); return api('/api/admin/teams/' + id, { method: 'PUT', body: { status: t.status || 'pending', admin_note: t.admin_note || '', ...body } }).then(() => Object.assign(t, body)); };
+  el.onchange = (e) => { const id = e.target.dataset.id; if (!id) return; if (e.target.classList.contains('ci')) patch(id, { checked_in: e.target.checked }); if (e.target.classList.contains('jv')) patch(id, { jury_visited: e.target.checked }); if (e.target.classList.contains('tbl')) patch(id, { table_no: e.target.value.trim() }); };
+}
+const ext = (u, l) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${l}</a>` : '');
+const links = (t) => [ext(t.github, 'GitHub'), ext(t.demo, 'Demo'), ext(t.video, 'Video'), ext(t.deck, 'Deck'), ext(t.docs, 'Docs'), t.files.length ? `${t.files.length} file(s)` : ''].filter(Boolean).join(' · ') || '<span class="mini">—</span>';
+
+function openTeam(id) {
+  const t = S.teams.find((x) => x.id === id), d = $('#dlg');
+  d.innerHTML = `<h2>${esc(t.name || '(unnamed)')} <span class="mini">· ${esc(t.login)}</span></h2>
+    <div class="row"><div><label>Team name</label><input id="tname" value="${esc(t.name)}" maxlength="60"></div><div><label>College</label><input id="tcol" value="${esc(t.college)}" maxlength="120"></div></div>
+    <label>Members (one per line: <code>Name, email</code> — email optional)</label><textarea id="tmem" style="min-height:80px">${esc(t.members.map((m) => m.email ? m.name + ', ' + m.email : m.name).join('\n'))}</textarea>
+    <h3>${esc(t.title || 'No title yet')}</h3><p>${esc(t.tagline || '')}</p><p style="white-space:pre-wrap">${esc(t.description || '')}</p>
+    <p class="mini">Tech: ${esc(t.tech || '—')} · Track: ${esc(t.track || '—')}</p><p>${links(t)}</p>
+    ${t.files.map((f) => `<div class="file"><span>📎 ${esc(f.orig_name)}</span><span class="mini">${fmtSize(f.size)}</span><a class="btn sec sm" href="/files/${f.id}">Download</a></div>`).join('')}
+    ${t.extra ? `<p class="mini">Note: ${esc(t.extra)}</p>` : ''}
+    <p class="mini">${t.submitted_at ? 'Finalized ' + fmtDT(t.submitted_at) : 'Not finalized'} ${t.updated_at ? '· last edit ' + fmtDT(t.updated_at) : ''}</p>
+    <div class="row"><div><label>Admin status</label><select id="tst">${['pending', 'accepted', 'flagged', 'disqualified'].map((x) => `<option ${x === (t.status || 'pending') ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+    <div><label>Admin note (private)</label><input id="tnote" value="${esc(t.admin_note || '')}"></div></div>
+    <div class="flex" style="margin-top:16px"><button class="btn" id="tsave">Save</button><button class="btn sec" id="tfin">${t.final ? 'Un-finalize' : 'Mark final'}</button>
+    <button class="btn sec" id="tpsr">Reset PS changes</button><button class="btn bad" id="tdel">Delete team</button><span class="sp"></span><button class="btn sec" id="tclose">Close</button></div>`;
+  d.showModal();
+  $('#tclose').onclick = () => d.close();
+  const tf = () => ({ status: $('#tst').value, admin_note: $('#tnote').value, name: $('#tname').value, college: $('#tcol').value, members: $('#tmem').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const i = l.indexOf(','); return i < 0 ? { name: l, email: '' } : { name: l.slice(0, i).trim(), email: l.slice(i + 1).trim() }; }) });
+  const sv = async (extra) => { try { await api('/api/admin/teams/' + id, { method: 'PUT', body: { ...tf(), ...extra } }); d.close(); load(); } catch (e) { alert(e.message); } };
+  $('#tsave').onclick = () => sv({});
+  $('#tfin').onclick = () => sv({ final: !t.final });
+  $('#tpsr').onclick = () => sv({ reset_ps_changes: true });
+  $('#tdel').onclick = async () => { if (confirm(`Delete team "${t.name || t.login}" and all its files? This cannot be undone.`)) { await api('/api/admin/teams/' + id, { method: 'DELETE' }); d.close(); load(); } };
+}
+
+/* ---------- scoring (paper jury → bulk entry) ---------- */
+function board() {
+  const rub = E().rubric, max = total(rub.map((r) => r.max));
+  return S.teams.filter((t) => t.status !== 'disqualified').map((t) => {
+    const sc = S.scores.filter((s) => s.team_id === t.id).map((s) => total(JSON.parse(s.scores)));
+    return { t, n: sc.length, avg: sc.length ? sc.reduce((a, b) => a + b, 0) / sc.length : null, max };
+  }).filter((r) => r.n).sort((a, b) => b.avg - a.avg);
+}
+function rScoring(el) {
+  const rub = E().rubric, eligible = S.teams.filter((t) => t.final || t.title).sort(tcmp);
+  const mine = Object.fromEntries(S.scores.filter((s) => s.judge === judge).map((s) => [s.team_id, s]));
+  const lb = board();
+  el.innerHTML = `<h2>Scoring <span class="mini">· judges score on paper, you key it in here</span></h2>
+  <div class="card noprint" style="margin-bottom:16px"><h3>1 · Print blank score sheets</h3>
+    <p class="mini">One page per judge: teams ordered by table number, with a box per criterion (max ${rub.map((r) => r.max).join('/')}). Judges fill in pencil.</p>
+    <button class="btn sec" id="printBtn">Print score sheet</button></div>
+  <div class="card" style="margin-bottom:16px"><div class="flex noprint"><h3 style="margin:0">2 · Enter scores from paper</h3><span class="sp"></span>
+    <label style="margin:0">Judge</label><select id="jsel" style="max-width:180px">${E().judges.map((j) => `<option ${j === judge ? 'selected' : ''}>${esc(j)}</option>`).join('')}</select></div>
+    <div class="tw" style="margin-top:10px"><table class="sheet"><tr><th>Table</th><th>Team</th><th>Project</th>${rub.map((r) => `<th>${esc(r.name)}<br><span class="mini">/${r.max}</span></th>`).join('')}<th class="noprint">Total</th><th>Comment</th></tr>
+    ${eligible.map((t) => { const s = mine[t.id], v = s ? JSON.parse(s.scores) : []; return `<tr data-tid="${t.id}"><td><b>${esc(t.table_no || '—')}</b></td><td>${esc(t.name || t.login)}</td><td>${esc(t.title || '—')}</td>
+      ${rub.map((r, i) => `<td><input class="sc" type="number" min="0" max="${r.max}" step="0.5" value="${v[i] ?? ''}"></td>`).join('')}<td class="noprint tot">${s ? total(v) : ''}</td>
+      <td><input class="cm" value="${esc(s?.comment || '')}" maxlength="300" style="min-width:140px"></td></tr>`; }).join('') || '<tr><td colspan=10 class="mini">No submissions yet</td></tr>'}</table></div>
+    <div class="flex noprint" style="margin-top:12px"><button class="btn" id="saveSc">Save ${esc(judge)}’s scores</button><span id="scMsg"></span></div></div>
+  <div class="card noprint" style="margin-bottom:16px"><h3>Or paste CSV</h3><p class="mini">Columns: <code>team name or ID, judge, ${rub.map((r) => esc(r.name)).join(', ')}</code> (header optional). Judge must match a name in Settings.</p>
+    <textarea id="csvIn" style="min-height:70px"></textarea><div class="flex" style="margin-top:8px"><button class="btn sec" id="csvGo">Import CSV</button><span id="csvMsg"></span></div></div>
+  <div class="card"><h3>Leaderboard <span class="mini">(average of judges’ totals, max ${lb[0]?.max ?? total(rub.map((r) => r.max))})</span></h3>
+    <table><tr><th>Rank</th><th>Team</th><th>Project</th><th>Problem</th><th>Judges</th><th>Avg</th></tr>${lb.map((r, i) => `<tr><td>${i + 1}</td><td><b>${esc(r.t.name || r.t.login)}</b></td><td>${esc(r.t.title || '')}</td><td>${esc(r.t.track || '')}</td><td>${r.n}</td><td><b>${r.avg.toFixed(2)}</b></td></tr>`).join('') || '<tr><td colspan=6 class="mini">No scores yet</td></tr>'}</table>
+    <div class="noprint" style="margin-top:10px"><button class="btn sec sm" id="lbCsv">Download leaderboard CSV</button></div></div>
+  <div class="printonly" id="printSheet"></div>`;
+  $('#jsel').onchange = (e) => { judge = e.target.value; rScoring(el); };
+  $$('tr[data-tid]', el).forEach((tr) => tr.addEventListener('input', () => { $('.tot', tr).textContent = total($$('.sc', tr).map((i) => i.value)) || ''; }));
+  $('#saveSc').onclick = async () => {
+    const rows = $$('tr[data-tid]', el).map((tr) => ({ team_id: Number(tr.dataset.tid), judge, scores: $$('.sc', tr).map((i) => i.value), comment: $('.cm', tr).value }));
+    try { const r = await api('/api/admin/scores', { method: 'PUT', body: { rows } }); await load(); flash($('#scMsg'), `Saved (${r.saved} teams)`); } catch (e) { flash($('#scMsg'), e.message, 'err'); }
+  };
+  $('#csvGo').onclick = async () => {
+    const byName = Object.fromEntries(S.teams.flatMap((t) => [[t.name.toLowerCase(), t.id], [t.login.toLowerCase(), t.id]])), rows = [], bad = [];
+    for (const line of $('#csvIn').value.split('\n').map((l) => l.trim()).filter(Boolean)) {
+      const c = line.split(',').map((x) => x.trim()); if (c.length < 3 || isNaN(Number(c[2]))) continue; // skips header
+      const id = byName[c[0].toLowerCase()]; if (!id) { bad.push(c[0]); continue; }
+      rows.push({ team_id: id, judge: c[1], scores: c.slice(2, 2 + rub.length), comment: '' });
+    }
+    try { const r = await api('/api/admin/scores', { method: 'PUT', body: { rows } }); await load(); flash($('#csvMsg'), `Imported ${r.saved}` + (bad.length ? ` · unknown teams: ${bad.join(', ')}` : ''), bad.length ? 'err' : 'ok', 9000); } catch (e) { flash($('#csvMsg'), e.message, 'err'); }
+  };
+  $('#lbCsv').onclick = () => {
+    const csv = ['rank,team,project,track,judges,avg', ...lb.map((r, i) => [i + 1, r.t.name, r.t.title, r.t.track, r.n, r.avg.toFixed(2)].map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'vyom-leaderboard.csv'; a.click();
+  };
+  $('#printBtn').onclick = () => {
+    $('#printSheet').innerHTML = `<h2>${esc(E().name)} — Jury score sheet</h2><p>Judge: ______________________ &nbsp; Date: ____________</p>
+      <table class="sheet"><tr><th>Table</th><th>Team</th><th>Project / Track</th>${rub.map((r) => `<th>${esc(r.name)} (/${r.max})</th>`).join('')}<th>Total</th><th>Comments</th></tr>
+      ${eligible.map((t) => `<tr><td><b>${esc(t.table_no || '')}</b></td><td><b>${esc(t.name || t.login)}</b></td><td>${esc(t.title || '')}<br><small>${esc(t.track || '')}</small></td>${rub.map(() => '<td></td>').join('')}<td></td><td></td></tr>`).join('')}</table>`;
+    document.body.classList.add('printing'); window.print(); document.body.classList.remove('printing');
+  };
+}
+
+
+/* ---------- team logins ---------- */
+let lastCreds = null;
+const credCsv = (c) => ['team_id,password,team_name', ...c.map((x) => [x.login, x.password, x.name || ''].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+const download = (name, text) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = name; a.click(); };
+function rCodes(el) {
+  el.innerHTML = `<h2>Team logins <span class="mini">· one shared login per team; your main website delivers them</span></h2>
+  <div class="card noprint" style="margin-bottom:16px"><h3>Generate logins</h3>
+    <p class="mini">IDs run <code>VYOM-001, 002…</code> with a random password. Passwords are shown <b>only once</b> (stored hashed), so download the CSV right away.</p>
+    <div class="row"><div><label>How many teams?</label><input id="ccount" type="number" min="1" max="500" value="${S.teams.length ? 10 : 50}"></div>
+    <div><label>…or paste your teams (optional, one per line: <code>Team name, College</code>)</label><textarea id="crows" style="min-height:60px" placeholder="Rocket Squad, XYZ College"></textarea></div></div>
+    <div class="flex" style="margin-top:10px"><button class="btn" id="cgen">Generate</button><span id="cmsg"></span></div></div>
+  <div id="credOut"></div>
+  <div class="card tw noprint"><h3>All teams (${S.teams.length})</h3><table><tr><th>Team ID</th><th>Team</th><th>Details</th><th></th></tr>${S.teams.map((t) => `<tr><td><code>${esc(t.login)}</code></td><td>${esc(t.name || '—')}</td>
+    <td class="mini">${t.members.length} member(s) · ${t.checked_in ? 'checked in' : 'not checked in'}</td><td><button class="btn sec sm" data-reset="${t.id}">Reset password</button></td></tr>`).join('') || '<tr><td colspan=4 class="mini">No teams yet</td></tr>'}</table></div>`;
+  const showCreds = () => { if (!lastCreds) return; $('#credOut').innerHTML = `<div class="card" style="margin-bottom:16px;border-color:var(--warn)"><h3>New credentials — save now</h3><div class="flex"><button class="btn" id="dl">Download credentials CSV</button><button class="btn sec" id="cp">Copy as text</button></div>
+    <div class="tw"><table><tr><th>Team ID</th><th>Password</th><th>Team</th></tr>${lastCreds.map((c) => `<tr><td><code>${esc(c.login)}</code></td><td><code>${esc(c.password)}</code></td><td>${esc(c.name)}</td></tr>`).join('')}</table></div></div>`;
+    $('#dl').onclick = () => download('vyom-credentials.csv', credCsv(lastCreds)); $('#cp').onclick = () => navigator.clipboard.writeText(lastCreds.map((c) => `${c.login}\t${c.password}\t${c.name}`).join('\n')); };
+  showCreds();
+  $('#cgen').onclick = async () => {
+    const rows = $('#crows').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const i = l.indexOf(','); return { name: (i < 0 ? l : l.slice(0, i)).trim(), college: i < 0 ? '' : l.slice(i + 1).trim() }; });
+    try { const r = await api('/api/admin/teams/generate', { method: 'POST', body: { count: Number($('#ccount').value), rows } }); lastCreds = r.credentials; download('vyom-credentials.csv', credCsv(lastCreds)); await load(); }
+    catch (e) { flash($('#cmsg'), e.message, 'err'); }
+  };
+  el.onclick = async (e) => { const id = e.target.dataset.reset; if (!id || !confirm('Generate a new password for this team? The old one stops working and any signed-in session ends.')) return;
+    const r = await api(`/api/admin/teams/${id}/reset`, { method: 'POST' }); lastCreds = [{ login: r.login, password: r.password, name: S.teams.find((t) => t.id == id).name }]; rCodes(el); };
+}
+
+/* ---------- problem statements ---------- */
+function rProblems(el) {
+  const row = (x) => `<div class="card" style="margin-bottom:10px"><div class="flex"><input class="pt" placeholder="Title" maxlength="120" value="${esc(x.title)}" style="flex:1"><select class="pk" style="max-width:200px"><option value="">No track</option>${E().tracks.map((t) => `<option ${t === x.track ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select><button class="btn bad sm pdel">✕</button></div>
+    <textarea class="pd" placeholder="Full description, constraints, expected deliverables…" maxlength="3000" style="margin-top:8px">${esc(x.desc)}</textarea></div>`;
+  el.innerHTML = `<h2>Problem statements <span class="mini">· teams pick one in their submission</span></h2><div id="plist">${E().problems.map(row).join('')}</div>
+    <div class="flex"><button class="btn sec" id="padd">+ Add problem statement</button><button class="btn" id="psave">Save</button><span id="pmsg"></span></div>
+    <p class="mini">Titles must be unique. Renaming a title after teams have chosen it leaves their saved choice pointing at the old name.</p>`;
+  $('#padd').onclick = () => $('#plist').insertAdjacentHTML('beforeend', row({ title: '', desc: '', track: '' }));
+  el.onclick = (e) => e.target.classList.contains('pdel') && e.target.closest('.card').remove();
+  $('#psave').onclick = async () => {
+    const problems = $$('#plist .card').map((c) => ({ title: $('.pt', c).value, desc: $('.pd', c).value, track: $('.pk', c).value }));
+    try { await api('/api/admin/problems', { method: 'PUT', body: { problems } }); await load(); flash($('#pmsg'), 'Saved'); } catch (er) { flash($('#pmsg'), er.message, 'err'); }
+  };
+}
+
+/* ---------- perks ---------- */
+function rPerks(el) {
+  const e = E(), L = S.perkLinks, AC = S.perkAccounts || [];
+  el.innerHTML = `<h2>Perks <span class="mini">· one-time redemption links, handed out as teams claim them</span></h2>
+  <p class="mini">Teams get ${e.perksPerTeam} perk(s) each; it unlocks after check-in or final submission. Change the perk names / limit in Settings.</p>
+  <div class="grid g2">${e.perks.map((k) => { const mine = L.filter((l) => l.perk === k), free = mine.filter((l) => !l.team_id).length;
+    return `<div class="card"><h3>${esc(k)}</h3><div class="flex"><b style="font-size:28px">${free}</b><span class="mini">left · ${mine.length - free} claimed · ${mine.length} total</span></div>
+      <label>Paste links (one per line)</label><textarea data-add="${esc(k)}" style="min-height:70px" placeholder="https://…"></textarea><div class="flex" style="margin-top:8px"><button class="btn sm" data-addbtn="${esc(k)}">Add to pool</button><span class="mini" data-amsg="${esc(k)}"></span></div>
+      <details style="margin-top:12px"><summary class="mini" style="cursor:pointer">…or assign per-team accounts (${AC.filter((a) => a.perk === k).length} assigned, ${AC.filter((a) => a.perk === k && a.claimed_at).length} revealed)</summary>
+        <label>Login page shown on the card</label><input data-url="${esc(k)}" value="${esc((e.perkUrls || {})[k] || '')}" placeholder="https://canva.com/…">
+        <label>Paste rows: <code>Name, Username, Password</code> (Name = team ID like VYOM-001; tabs or commas)</label><textarea data-acct="${esc(k)}" style="min-height:90px"></textarea>
+        <div class="flex" style="margin-top:8px"><button class="btn sm" data-acctbtn="${esc(k)}">Import accounts</button><span class="mini" data-cmsg="${esc(k)}"></span></div>
+        <p class="mini">If a perk has per-team accounts, each team can only reveal its own.</p></details></div>`; }).join('')}</div>
+  <div class="card tw" style="margin-top:16px"><h3>Claims</h3><table><tr><th>Team</th><th>Perk</th><th>Link / username</th><th>Claimed</th><th></th></tr>${AC.filter((x) => x.claimed_at).map((x) => `<tr><td><b>${esc(x.team || x.login)}</b></td><td>${esc(x.perk)}</td><td class="mini">${esc(x.username)}</td><td>${fmtDT(x.claimed_at)}</td><td><button class="btn sec sm" data-racct="${esc(x.perk)}|${esc(x.login)}">Hide again</button></td></tr>`).join('')}${L.filter((l) => l.team_id).map((l) => `<tr><td><b>${esc(l.team)}</b></td><td>${esc(l.perk)}</td>
+    <td class="mini" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.url)}</td><td>${fmtDT(l.claimed_at)}</td><td><button class="btn sec sm" data-rel="${l.id}">Release</button></td></tr>`).join('') || '<tr><td colspan=5 class="mini">Nothing claimed yet</td></tr>'}</table></div>`;
+  el.onclick = async (ev) => {
+    const ak = ev.target.dataset.acctbtn, ra = ev.target.dataset.racct;
+    if (ak) { const q = (a) => $(`[data-${a}="${CSS.escape(ak)}"]`); try { const j = await api('/api/admin/perks/accounts', { method: 'POST', body: { perk: ak, text: q('acct').value, url: q('url').value } }); const msg = `Imported ${j.added}` + (j.skipped.length ? ` · unknown IDs: ${j.skipped.join(', ')}` : '') + (j.alreadyClaimed ? ` · ${j.alreadyClaimed} already revealed (kept)` : ''); await load(); alert(msg); } catch (er) { alert(er.message); } }
+    if (ra && confirm('Hide this account from the team again?')) { const [perk, login] = ra.split('|'); await api('/api/admin/perks/accounts/release', { method: 'POST', body: { perk, login } }); load(); }
+    const k = ev.target.dataset.addbtn, r = ev.target.dataset.rel;
+    if (k) { const ta = $(`[data-add="${CSS.escape(k)}"]`); try { const j = await api('/api/admin/perks/add', { method: 'POST', body: { perk: k, text: ta.value } }); await load(); const m = $(`[data-amsg="${CSS.escape(k)}"]`); m.textContent = `Added ${j.added}` + (j.skipped ? `, skipped ${j.skipped} duplicates` : ''); } catch (er) { alert(er.message); } }
+    if (r && confirm('Return this link to the pool and un-assign it from the team? Only do this if it was never redeemed.')) { await api('/api/admin/perks/' + r + '?release=1', { method: 'DELETE' }); load(); }
+  };
+}
+
+/* ---------- schedule ---------- */
+function rSched(el) {
+  const items = S.schedule.map((i) => ({ ...i }));
+  el.innerHTML = `<h2>Schedule <span class="mini">· shown live to participants (your browser’s timezone is used for the pickers)</span></h2><div class="card tw">
+    <table><tr><th>Start</th><th>End</th><th>Title</th><th>Location</th><th>Type</th><th></th></tr><tbody id="sb"></tbody></table>
+    <div class="flex" style="margin-top:12px"><button class="btn sec" id="addRow">+ Add item</button><button class="btn" id="saveSched">Save schedule</button><span id="schMsg"></span></div></div>`;
+  const row = (i) => `<tr><td><input type="datetime-local" class="s" value="${toLocalInput(i.start)}"></td><td><input type="datetime-local" class="e" value="${toLocalInput(i.end)}"></td>
+    <td><input class="t" value="${esc(i.title)}" maxlength="120"></td><td><input class="l" value="${esc(i.location)}" maxlength="80"></td>
+    <td><select class="k">${['event', 'meal', 'milestone', 'deadline'].map((k) => `<option ${k === i.kind ? 'selected' : ''}>${k}</option>`).join('')}</select></td><td><button class="btn bad sm del">✕</button></td></tr>`;
+  $('#sb').innerHTML = items.map(row).join('');
+  $('#addRow').onclick = () => $('#sb').insertAdjacentHTML('beforeend', row({ start: nowMs() + 36e5, end: null, title: '', location: '', kind: 'event' }));
+  $('#sb').onclick = (e) => e.target.classList.contains('del') && e.target.closest('tr').remove();
+  $('#saveSched').onclick = async () => {
+    const out = $$('#sb tr').map((tr) => ({ start: fromLocalInput($('.s', tr).value), end: fromLocalInput($('.e', tr).value) || null, title: $('.t', tr).value, location: $('.l', tr).value, kind: $('.k', tr).value }));
+    try { await api('/api/admin/schedule', { method: 'PUT', body: { items: out } }); await load(); flash($('#schMsg'), 'Saved — participants see it within 20 seconds'); } catch (e) { flash($('#schMsg'), e.message, 'err'); }
+  };
+}
+
+/* ---------- announcements ---------- */
+function rAnns(el) {
+  el.innerHTML = `<h2>Announcements</h2><div class="card" style="margin-bottom:16px"><textarea id="abody" placeholder="Lunch is served! / WiFi password changed / Deadline extended…" maxlength="1000" style="min-height:70px"></textarea>
+    <div class="flex" style="margin-top:8px"><label style="margin:0"><input type="checkbox" id="apin" style="width:auto"> Pin to top</label><span class="sp"></span><button class="btn" id="apost">Post</button></div><div id="amsg"></div></div>
+    ${S.announcements.map((a) => `<div class="ann ${a.pinned ? 'pin' : ''} flex"><div style="flex:1">${a.pinned ? '📌 ' : ''}${esc(a.body)}<time>${fmtDT(a.created_at)}</time></div><button class="btn bad sm" data-del="${a.id}">✕</button></div>`).join('')}`;
+  $('#apost').onclick = async () => { try { await api('/api/admin/announcements', { method: 'POST', body: { body: $('#abody').value, pinned: $('#apin').checked } }); await load(); } catch (e) { flash($('#amsg'), e.message, 'err'); } };
+  el.onclick = async (e) => { if (e.target.dataset.del) { await api('/api/admin/announcements/' + e.target.dataset.del, { method: 'DELETE' }); load(); } };
+}
+
+/* ---------- settings ---------- */
+function rSettings(el) {
+  const e = E();
+  el.innerHTML = `<h2>Settings</h2><form class="card" id="setForm">
+    <div class="row"><div><label>Event name</label><input name="name" value="${esc(e.name)}"></div><div><label>Tagline</label><input name="tagline" value="${esc(e.tagline)}"></div></div>
+    <div class="row"><div><label>Display timezone (IANA)</label><input name="timezone" value="${esc(e.timezone)}"></div><div></div></div>
+    <div class="row"><div><label>Hacking starts</label><input type="datetime-local" name="start" value="${toLocalInput(e.start)}"></div><div><label>Hacking ends / event ends</label><input type="datetime-local" name="end" value="${toLocalInput(e.end)}"></div></div>
+    <label>Submission deadline (portal locks automatically)</label><input type="datetime-local" name="deadline" value="${toLocalInput(e.deadline)}" style="max-width:300px">
+    <div class="row"><div><label>Judges (one per line — used for paper score entry)</label><textarea name="judges">${esc(e.judges.join('\n'))}</textarea></div></div>
+    <div class="row"><div><label>College / organiser</label><input name="college" value="${esc(e.college)}"></div><div><label>Venue</label><input name="venue" value="${esc(e.venue)}"></div></div>
+    <div class="row"><div><label>Subtitle line (above the event name)</label><input name="subtitle" value="${esc(e.subtitle)}"></div><div><label>Format line</label><input name="format" value="${esc(e.format)}"></div></div>
+    <div class="row"><div><label>Prize pool text</label><input name="prize" value="${esc(e.prize)}"></div><div><label>Mission words (one per line)</label><textarea name="mission" style="min-height:70px">${esc(e.mission.join('\n'))}</textarea></div></div>
+    <div class="row"><div><label>Tracks (one per line)</label><textarea name="tracks" style="min-height:80px">${esc(e.tracks.join('\n'))}</textarea></div><div><label>Perks / highlights shown on the page (one per line)</label><textarea name="highlights" style="min-height:80px">${esc(e.highlights.join('\n'))}</textarea></div></div>
+    <div class="row"><div><label>Partners (one per line: <code>Group | Name</code>)</label><textarea name="partners" style="min-height:110px">${esc(e.partners.map((x) => `${x.group} | ${x.name}`).join('\n'))}</textarea></div><div><label>Coordinators (one per line: <code>Name | Phone</code>)</label><textarea name="contacts" style="min-height:110px">${esc(e.contacts.map((x) => `${x.name} | ${x.phone}`).join('\n'))}</textarea></div></div>
+    <div class="row"><div><label>Min team size</label><input name="minTeam" type="number" min="1" value="${e.minTeam}"></div><div><label>Max team size</label><input name="maxTeam" type="number" min="1" value="${e.maxTeam}"></div></div>
+    <div class="row"><div><label>Problem-statement changes allowed per team (after first pick)</label><input name="maxPsChanges" type="number" min="0" value="${e.maxPsChanges}"></div><div></div></div>
+    <div class="row"><div><label>Perks (one per line — each needs a link pool)</label><textarea name="perks" style="min-height:80px">${esc(e.perks.join('\n'))}</textarea></div><div><label>Perks each team may claim</label><input name="perksPerTeam" type="number" min="1" value="${e.perksPerTeam}"></div></div>
+    <label>Rules (shown on the participant page)</label><textarea name="rules">${esc(e.rules)}</textarea>
+    <label>FAQ (one per line: <code>Question | Answer</code>)</label><textarea name="faq">${esc(e.faq.map((f) => `${f.q} | ${f.a}`).join('\n'))}</textarea>
+    <label>Scoring rubric (one per line: <code>Criterion, max</code>)</label><textarea name="rubric">${esc(e.rubric.map((r) => `${r.name}, ${r.max}`).join('\n'))}</textarea>
+    <div class="flex" style="margin-top:14px"><button class="btn">Save settings</button><span id="setMsg"></span></div></form>`;
+  $('#setForm').onsubmit = async (ev) => {
+    ev.preventDefault(); const f = Object.fromEntries(new FormData(ev.target)), lines = (s) => s.split('\n').map((x) => x.trim()).filter(Boolean);
+    const body = { name: f.name, tagline: f.tagline, timezone: f.timezone, start: fromLocalInput(f.start), end: fromLocalInput(f.end), deadline: fromLocalInput(f.deadline),
+      judges: lines(f.judges), college: f.college, venue: f.venue, subtitle: f.subtitle, format: f.format, prize: f.prize, mission: lines(f.mission), tracks: lines(f.tracks), highlights: lines(f.highlights),
+      partners: lines(f.partners).map((l) => { const [g, n] = l.split('|'); return n === undefined ? { group: 'Partner', name: g.trim() } : { group: g.trim(), name: n.trim() }; }),
+      contacts: lines(f.contacts).map((l) => { const [n, ph] = l.split('|'); return { name: n.trim(), phone: (ph || '').trim() }; }),
+      minTeam: Number(f.minTeam), maxTeam: Number(f.maxTeam), maxPsChanges: Number(f.maxPsChanges), perksPerTeam: Number(f.perksPerTeam), perks: lines(f.perks), rules: f.rules,
+      faq: lines(f.faq).map((l) => { const i = l.indexOf('|'); return { q: (i < 0 ? l : l.slice(0, i)).trim(), a: i < 0 ? '' : l.slice(i + 1).trim() }; }), rubric: lines(f.rubric).map((l) => { const [n, m] = l.split(','); return { name: n.trim(), max: Number(m) || 10 }; }) };
+    try { await api('/api/admin/event', { method: 'PUT', body }); await load(); flash($('#setMsg'), 'Saved'); } catch (er) { flash($('#setMsg'), er.message, 'err'); }
+  };
+}
+
+load();
+setInterval(() => { if (S && pane === 'overview') load().catch(() => {}); }, 30000);
+</script>
+</body>
+</html>
