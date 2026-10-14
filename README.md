@@ -1,20 +1,45 @@
 # VYOM Hackathon Portal
 
-Zero-dependency Node app (Node 22+). Participant portal at `/`, admin portal at `/admin`.
+Zero-dependency Node.js app (Node 22+). Participant portal at `/`, admin portal at `/admin`.
 
-    node server.js                       # http://localhost:3000
-    ADMIN_PASSWORD=yourpass PORT=8080 node server.js
+## Run the Application
 
-Admin password is printed on first start and saved to `data/admin_password.txt` unless `ADMIN_PASSWORD` is set.
-Data lives in `data/` (SQLite DB + uploaded files) — back it up; delete it to reset.
+```bash
+node server.js
+```
 
-**Participants:** live countdown, now/next, timetable, announcements; register a team, save drafts, upload files, mark final. Locks at the deadline.
-**Admin:** overview, all submissions (links + files), schedule/announcement editors, settings (dates, tracks, rubric, judges), paper-jury scoring (print sheets, key-in grid or CSV paste, leaderboard), CSV export.
+Open http://localhost:3000 in your browser.
 
-## Event-day flow
-1. **Team logins** tab → generate one login per team (`VYOM-001…`, random password, shared by all members). Passwords are shown once; download the CSV and hand it to your main website for delivery. Lost one? "Reset password".
-2. **Problem statements** tab → write the problems; teams read them on the portal and pick one in their submission.
-3. **Perks** tab → paste your one-time Canva / Miro / surprise-AI links per pool.
-4. At check-in, tick **In** and set the **Table** number on the Submissions tab. Teams see it live and their perk unlocks (perks unlock only after check-in).
-5. Teams sign in, fill team details (name + 2–4 members), pick a problem, submit GitHub + deck (+ optional files/links).
-6. Scoring tab → print the jury sheet (ordered by table), key in scores after the live demos, read the leaderboard.
+To use a custom admin password and port:
+
+```bash
+ADMIN_PASSWORD=yourpass PORT=8080 node server.js
+```
+
+The admin password is printed on first start and saved to `data/admin_password.txt` unless `ADMIN_PASSWORD` is set.
+
+Data is stored in `data/` (SQLite database and uploaded files). Back up this folder to preserve data. Delete it only if you intend to reset the data.
+
+## Participant Features
+
+- Live countdown, current and upcoming events, timetable, and announcements.
+- Team registration and draft saving.
+- File uploads and final submission.
+- Automatic submission locking at the deadline.
+
+## Admin Features
+
+- Dashboard overview and submission management.
+- Schedule and announcement editors.
+- Settings for dates, tracks, rubric, and judges.
+- Jury scoring, printable sheets, score entry, CSV import, and leaderboard.
+- CSV export.
+
+## Event-Day Workflow
+
+1. **Team logins:** Generate one login per team (`VYOM-001…`). Download the CSV and distribute the credentials securely. Passwords are shown once; use the reset option if needed.
+2. **Problem statements:** Add the problem statements that participants can read and select.
+3. **Perks:** Add one-time Canva, Miro, or other resource links for each pool.
+4. **Check-in:** Mark teams as checked in and assign table numbers. Perks unlock after check-in.
+5. **Team submissions:** Participants sign in, enter team details (name and 2–4 members), select a problem, and submit their GitHub repository, presentation deck, and optional files or links.
+6. **Jury scoring:** Print jury sheets ordered by table, enter scores after live demos, and review the leaderboard.
