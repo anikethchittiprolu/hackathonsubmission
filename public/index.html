@@ -40,7 +40,7 @@
 
     <div id="authBox" class="card" style="max-width:420px;margin:0 auto">
       <h3>Team sign-in</h3>
-      <p class="mini">Use the team ID and password the organisers gave your team (e.g. <code>VYOM-014</code>). The whole team shares one login.</p>
+      <p class="mini">Use the team ID and password the organisers gave your team (e.g. <code id="idExample">VYOM-014</code>). The whole team shares one login.</p>
       <form id="authForm">
         <label>Team ID</label><input name="login" autocomplete="username" autocapitalize="characters" required style="text-transform:uppercase;letter-spacing:.1em">
         <label>Password</label><input name="password" type="password" autocomplete="current-password" required>
@@ -108,6 +108,8 @@ const locked = () => D && nowMs() > D.event.deadline;
 /* ---------- live data ---------- */
 async function loadPublic() {
   D = await api('/api/public'); syncClock(D.now); setTZ(D.event.timezone);
+  if (D.event.loginPrefix) $('#idExample').textContent = D.event.loginPrefix + '-014';
+  document.title = `${D.event.name} — Portal`;
   $('#brand').textContent = D.event.name; $('#evName').textContent = D.event.name; $('#evTag').textContent = D.event.tagline || '';
   document.title = D.event.name + ' — Hackathon Portal';
   $('#tzLbl').textContent = '· ' + D.event.timezone; $('#tzFoot').textContent = D.event.timezone;
@@ -213,7 +215,7 @@ function renderSub() {
   $('#checklist').innerHTML = chk.map(([l, ok]) => `<li class="${ok ? 'done' : ''}">${l}</li>`).join('');
   $('#descCount').textContent = `${(f.description || '').length}/4000`;
   for (const k of ['deck', 'other']) $(`[data-list=${k}]`).innerHTML = s.files.filter((x) => (x.kind || 'other') === k).map((x) => `<div class="file"><span>📎 ${esc(x.orig_name)}</span><span class="mini">${fmtSize(x.size)}</span>
-    <a class="btn sec sm" href="/files/${x.id}">Download</a><button type="button" class="btn bad sm" data-del="${x.id}" ${locked() ? 'disabled' : ''}>✕</button></div>`).join('');
+    <a class="btn sec sm" href="${BASE}/files/${x.id}">Download</a><button type="button" class="btn bad sm" data-del="${x.id}" ${locked() ? 'disabled' : ''}>✕</button></div>`).join('');
   renderSubHeader();
 }
 $('#subForm').addEventListener('input', () => ME && renderSub());

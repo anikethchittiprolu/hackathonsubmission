@@ -2,6 +2,11 @@
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://15-135-120-185.sslip.io/api/:path*" },
     { "source": "/files/:path*", "destination": "https://15-135-120-185.sslip.io/files/:path*" },
-    { "source": "/admin", "destination": "/admin.html" }
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/vibeathon/api/:path*", "destination": "https://vibe.15-135-120-185.sslip.io/api/:path*" },
+    { "source": "/vibeathon/files/:path*", "destination": "https://vibe.15-135-120-185.sslip.io/files/:path*" },
+    { "source": "/vibeathon/admin", "destination": "/admin.html" },
+    { "source": "/vibeathon", "destination": "/index.html" },
+    { "source": "/vibeathon/", "destination": "/index.html" }
   ]
 }

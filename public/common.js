@@ -2,12 +2,15 @@
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// The same pages serve both portals: under /vibeathon they talk to the NoCode Vibeathon server
+// (/vibeathon/api/…, /vibeathon/files/…), at the root to the hackathon server.
+const BASE = /^\/vibeathon(\/|$)/.test(location.pathname) ? '/vibeathon' : '';
 
 async function api(path, opts = {}) {
   const o = { method: opts.method || 'GET', headers: {}, credentials: 'same-origin' };
   if (opts.body instanceof FormData) o.body = opts.body;
   else if (opts.body !== undefined) { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(opts.body); }
-  const r = await fetch(path, o); let j = {};
+  const r = await fetch(BASE + path, o); let j = {};
   try { j = await r.json(); } catch {}
   if (!r.ok) { const e = new Error(j.error || `Request failed (${r.status})`); e.status = r.status; throw e; }
   return j;
@@ -40,4 +43,11 @@ const fromLocalInput = (v) => (v ? new Date(v).getTime() : 0);
 function flash(el, msg, kind = 'ok', ms = 4000) {
   el.innerHTML = msg ? `<div class="msg ${kind === 'ok' ? 'ok' : 'err'}">${esc(msg)}</div>` : '';
   if (msg && kind === 'ok') setTimeout(() => { if (el.firstChild) el.innerHTML = ''; }, ms);
+}
+
+// Fixed "VYOM" labels (e.g. the admin header) name the vibeathon on its pages; the participant
+// header (#brand) already shows the event's own name.
+if (BASE) {
+  const relabel = () => { for (const b of $$('.brand:not(#brand)')) b.textContent = b.textContent.replace('VYOM', 'VIBEATHON'); document.title = document.title.replace('VYOM', 'VIBEATHON'); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', relabel); else relabel();
 }

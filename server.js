@@ -14,6 +14,11 @@ fs.mkdirSync(UPLOADS, { recursive: true });
 
 const PORT = Number(process.env.PORT || 3000);
 const BEHIND_PROXY = process.env.TRUST_PROXY === '1'; // set when running behind Caddy/nginx/Cloudflare/PaaS (HTTPS)
+// A second portal (e.g. the NoCode Vibeathon at /vibeathon) runs as its own instance on the same domain:
+// its own cookie names keep the two sign-ins apart, and its own team ID prefix (VIBE-001…).
+const COOKIE_PREFIX = (process.env.COOKIE_PREFIX || '').replace(/[^A-Za-z0-9_]/g, '');
+const SID = COOKIE_PREFIX + 'sid', ADMIN_SID = COOKIE_PREFIX + 'admin_sid';
+const LOGIN_PREFIX = (process.env.LOGIN_PREFIX || 'VYOM').toUpperCase().replace(/[^A-Z0-9]/g, '') || 'VYOM';
 const MAX_UPLOAD = 25 * 1024 * 1024; // per request
 const MAX_FILES_PER_TEAM = 8;
 const ALLOWED_EXT = new Set(['.pdf', '.ppt', '.pptx', '.doc', '.docx', '.zip', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp4', '.mov', '.md', '.txt']);
@@ -109,12 +114,12 @@ function parseCookies(req) { const o = {}; (req.headers.cookie || '').split(';')
 function newSession(res, kind, teamId) {
   const token = crypto.randomBytes(24).toString('base64url');
   db.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(token, kind, teamId ?? null, now() + 7 * 24 * H);
-  const c = `${kind === 'admin' ? 'admin_sid' : 'sid'}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${7 * 86400}${BEHIND_PROXY ? '; Secure' : ''}`;
+  const c = `${kind === 'admin' ? ADMIN_SID : SID}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${7 * 86400}${BEHIND_PROXY ? '; Secure' : ''}`;
   const prev = res.getHeader('Set-Cookie') || []; res.setHeader('Set-Cookie', [].concat(prev, c));
 }
 function auth(req) {
   const c = parseCookies(req); const out = {};
-  for (const [name, kind] of [['sid', 'team'], ['admin_sid', 'admin']]) {
+  for (const [name, kind] of [[SID, 'team'], [ADMIN_SID, 'admin']]) {
     if (!c[name]) continue;
     const s = db.prepare('SELECT * FROM sessions WHERE token=? AND kind=? AND expires>?').get(c[name], kind, now());
     if (s) out[kind] = s;
@@ -168,7 +173,7 @@ function cleanUrl(u, hostHint, label) {
   return x.toString();
 }
 
-function eventInfo() { return { maxPsChanges: 3, minTeam: 2, maxTeam: 4, perkUrls: {}, ...EVENT_DEFAULTS, ...getKV('event') }; }
+function eventInfo() { return { maxPsChanges: 3, minTeam: 2, maxTeam: 4, perkUrls: {}, ...EVENT_DEFAULTS, ...getKV('event'), loginPrefix: LOGIN_PREFIX }; }
 const deadlinePassed = () => now() > eventInfo().deadline;
 
 function submissionFor(teamId) {
@@ -216,7 +221,7 @@ async function api(req, res, url) {
     newSession(res, 'team', t.id); return send(res, 200, { ok: true });
   }
   if (p === '/api/logout' && m === 'POST') {
-    const c = parseCookies(req); if (c.sid) db.prepare('DELETE FROM sessions WHERE token=?').run(c.sid); clearCookie(res, 'sid'); return send(res, 200, { ok: true });
+    const c = parseCookies(req); if (c[SID]) db.prepare('DELETE FROM sessions WHERE token=?').run(c[SID]); clearCookie(res, SID); return send(res, 200, { ok: true });
   }
 
   if (p === '/api/me' && m === 'GET') {
@@ -338,7 +343,7 @@ async function api(req, res, url) {
     newSession(res, 'admin'); return send(res, 200, { ok: true });
   }
   if (p === '/api/admin/logout' && m === 'POST') {
-    const c = parseCookies(req); if (c.admin_sid) db.prepare('DELETE FROM sessions WHERE token=?').run(c.admin_sid); clearCookie(res, 'admin_sid'); return send(res, 200, { ok: true });
+    const c = parseCookies(req); if (c[ADMIN_SID]) db.prepare('DELETE FROM sessions WHERE token=?').run(c[ADMIN_SID]); clearCookie(res, ADMIN_SID); return send(res, 200, { ok: true });
   }
   if (p.startsWith('/api/admin/')) {
     if (!a.admin) return fail(res, 401, 'Admin sign-in required');
@@ -417,11 +422,11 @@ async function api(req, res, url) {
       // body: { count, rows?: [{name, college}] }  → creates predefined logins; passwords are returned ONCE here.
       const b = await readJSON(req), rows = Array.isArray(b.rows) ? b.rows : [];
       const n = Math.max(1, Math.min(500, rows.length || Number(b.count) || 1)), alpha = 'abcdefghjkmnpqrstuvwxyz23456789';
-      let next = (db.prepare("SELECT MAX(CAST(SUBSTR(login,6) AS INTEGER)) m FROM teams WHERE login LIKE 'VYOM-%'").get().m || 0) + 1; const out = [];
+      let next = (db.prepare('SELECT MAX(CAST(SUBSTR(login,?) AS INTEGER)) m FROM teams WHERE login LIKE ?').get(LOGIN_PREFIX.length + 2, LOGIN_PREFIX + '-%').m || 0) + 1; const out = [];
       const ins = db.prepare('INSERT INTO teams(login,name,pw_hash,college,created_at) VALUES(?,?,?,?,?)');
       db.exec('BEGIN'); try {
         for (let k = 0; k < n; k++, next++) {
-          const login = 'VYOM-' + String(next).padStart(3, '0');
+          const login = LOGIN_PREFIX + '-' + String(next).padStart(3, '0');
           const pw = Array.from(crypto.randomBytes(4), (x) => alpha[x % alpha.length]).join('') + '-' + Array.from(crypto.randomBytes(4), (x) => alpha[x % alpha.length]).join('');
           ins.run(login, clip(rows[k]?.name, 60), hashPw(pw), clip(rows[k]?.college, 120), now()); out.push({ login, password: pw, name: clip(rows[k]?.name, 60) });
         }

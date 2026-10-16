@@ -72,7 +72,7 @@ function rOverview(el) {
   <div class="card stat"><b>${draft}</b><span>Drafts</span></div><div class="card stat"><b>${T.filter((t) => t.checked_in).length}/${T.length}</b><span>Checked in</span></div><div class="card stat"><b>${T.filter((t) => t.name && t.members.length).length}/${T.length}</b><span>Team details filled</span></div>
   <div class="card stat"><b>${n < e.deadline ? human(e.deadline - n) : 'Closed'}</b><span>Until deadline</span></div></div>
   <div class="grid g2" style="margin-top:16px"><div class="card"><h3>By problem statement</h3>${Object.entries(byTrack).map(([k, v]) => `<div class="flex"><span style="flex:1">${esc(k)}</span><b>${v}</b></div>`).join('') || '<span class="mini">No submissions yet</span>'}</div>
-  <div class="card"><h3>Quick actions</h3><div class="flex"><a class="btn" href="/api/admin/export.csv">Download submissions CSV</a><a class="btn sec" href="/" target="_blank">Open participant site ↗</a></div>
+  <div class="card"><h3>Quick actions</h3><div class="flex"><a class="btn" href="${BASE}/api/admin/export.csv">Download submissions CSV</a><a class="btn sec" href="${BASE || '/'}" target="_blank">Open participant site ↗</a></div>
   <p class="mini">Change dates, rubric, perks and rules in Settings.</p></div></div>`;
 }
 
@@ -81,7 +81,7 @@ let q = '', fstat = 'all';
 function rSubs(el) {
   el.innerHTML = `<h2>Submissions</h2><div class="flex noprint" style="margin-bottom:12px"><input id="q" placeholder="Search team, ID, title…" style="max-width:300px" value="${esc(q)}">
     <select id="fs" style="max-width:180px">${['all', 'final', 'draft', 'none'].map((x) => `<option ${x === fstat ? 'selected' : ''} value="${x}">${{ all: 'All', final: 'Final only', draft: 'Drafts', none: 'Not started' }[x]}</option>`).join('')}</select>
-    <span class="sp"></span><a class="btn sec sm" href="/api/admin/export.csv">Export CSV</a></div><div class="card tw" id="stbl"></div>`;
+    <span class="sp"></span><a class="btn sec sm" href="${BASE}/api/admin/export.csv">Export CSV</a></div><div class="card tw" id="stbl"></div>`;
   $('#q').oninput = (e) => { q = e.target.value; fill(); }; $('#fs').onchange = (e) => { fstat = e.target.value; fill(); };
   const fill = () => {
     const rows = S.teams.filter((t) => {
@@ -107,7 +107,7 @@ function openTeam(id) {
     <label>Members (one per line: <code>Name, email</code> — email optional)</label><textarea id="tmem" style="min-height:80px">${esc(t.members.map((m) => m.email ? m.name + ', ' + m.email : m.name).join('\n'))}</textarea>
     <h3>${esc(t.title || 'No title yet')}</h3><p>${esc(t.tagline || '')}</p><p style="white-space:pre-wrap">${esc(t.description || '')}</p>
     <p class="mini">Tech: ${esc(t.tech || '—')} · Track: ${esc(t.track || '—')}</p><p>${links(t)}</p>
-    ${t.files.map((f) => `<div class="file"><span>📎 ${esc(f.orig_name)}</span><span class="mini">${fmtSize(f.size)}</span><a class="btn sec sm" href="/files/${f.id}">Download</a></div>`).join('')}
+    ${t.files.map((f) => `<div class="file"><span>📎 ${esc(f.orig_name)}</span><span class="mini">${fmtSize(f.size)}</span><a class="btn sec sm" href="${BASE}/files/${f.id}">Download</a></div>`).join('')}
     ${t.extra ? `<p class="mini">Note: ${esc(t.extra)}</p>` : ''}
     <p class="mini">${t.submitted_at ? 'Finalized ' + fmtDT(t.submitted_at) : 'Not finalized'} ${t.updated_at ? '· last edit ' + fmtDT(t.updated_at) : ''}</p>
     <div class="row"><div><label>Admin status</label><select id="tst">${['pending', 'accepted', 'flagged', 'disqualified'].map((x) => `<option ${x === (t.status || 'pending') ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
