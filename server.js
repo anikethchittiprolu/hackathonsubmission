@@ -183,7 +183,7 @@ function submissionFor(teamId) {
 }
 function completeness(sub, files = []) {
   const miss = []; if (!sub.title) miss.push('Project title'); if (!sub.track) miss.push('Problem statement'); if (!sub.description || sub.description.length < 40) miss.push('Description (40+ chars)');
-  if (!sub.github) miss.push('GitHub repository'); if (sub.__teamIncomplete) miss.push('Team name & members (2–4) in Team details'); if (!sub.deck && !files.some((f) => f.kind === 'deck')) miss.push('Pitch deck (link or uploaded file)'); return miss;
+  if (sub.__teamIncomplete) miss.push('Team name & members (2–4) in Team details'); if (!sub.deck && !files.some((f) => f.kind === 'deck')) miss.push('Pitch deck (link or uploaded file)'); return miss;
 }
 function cleanMembers(list, ev) {
   if (!Array.isArray(list)) throw Object.assign(new Error('Team members required'), { status: 400 });

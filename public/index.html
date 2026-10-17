@@ -64,7 +64,7 @@
           <div class="row"><div><label>Your problem statement</label><input id="psShow" disabled></div><div><label>Tech stack</label><input name="tech" maxlength="300" placeholder="React, FastAPI, Arduino…"></div></div>
           <label>Description * <span class="mini" id="descCount"></span></label><textarea name="description" maxlength="4000" placeholder="Problem, solution, how it works, what you built during the hackathon…"></textarea>
           <h3 style="margin-top:20px">Links</h3>
-          <label>GitHub repository * <span class="mini">(public, or invite the organisers)</span></label><input name="github" placeholder="https://github.com/team/project">
+          <label>GitHub repository <span class="mini">(optional · public, or invite the organisers)</span></label><input name="github" placeholder="https://github.com/team/project">
           <!-- Demo, video, deck and docs links are no longer asked for; kept hidden so links a team saved earlier aren't wiped on save. -->
           <input type="hidden" name="demo"><input type="hidden" name="video"><input type="hidden" name="deck"><input type="hidden" name="docs">
           <label>Anything else for the jury?</label><textarea name="extra" maxlength="1000" style="min-height:60px"></textarea>
@@ -211,7 +211,7 @@ function renderSub() {
   { const bd = $('#subBadge'); bd.className = 'tag ' + (s.final ? 'ok' : s.updated_at ? 'warn' : ''); bd.textContent = s.final ? 'FINAL SUBMITTED' : s.updated_at ? 'DRAFT' : 'NOT STARTED'; }
   const tag = $('#stateTag'); tag.className = 'tag ' + (s.final ? 'ok' : 'warn'); tag.textContent = s.final ? 'FINAL SUBMITTED' : s.updated_at ? 'DRAFT' : 'NOT STARTED';
   $('#finalBtn').classList.toggle('hide', !!s.final); $('#reopenBtn').classList.toggle('hide', !s.final);
-  const chk = [['Project title', f.title], ['Problem statement chosen', ME.team.ps], ['Description (40+ chars)', (f.description || '').length >= 40], ['GitHub repository', f.github], ['Pitch deck (link or uploaded file)', f.deck || s.files.some((x) => x.kind === 'deck')]];
+  const chk = [['Project title', f.title], ['Problem statement chosen', ME.team.ps], ['Description (40+ chars)', (f.description || '').length >= 40], ['Pitch deck (link or uploaded file)', f.deck || s.files.some((x) => x.kind === 'deck')]];
   $('#checklist').innerHTML = chk.map(([l, ok]) => `<li class="${ok ? 'done' : ''}">${l}</li>`).join('');
   $('#descCount').textContent = `${(f.description || '').length}/4000`;
   for (const k of ['deck', 'other']) $(`[data-list=${k}]`).innerHTML = s.files.filter((x) => (x.kind || 'other') === k).map((x) => `<div class="file"><span>📎 ${esc(x.orig_name)}</span><span class="mini">${fmtSize(x.size)}</span>
