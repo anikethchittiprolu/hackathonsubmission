@@ -65,8 +65,8 @@
           <label>Description * <span class="mini" id="descCount"></span></label><textarea name="description" maxlength="4000" placeholder="Problem, solution, how it works, what you built during the hackathon…"></textarea>
           <h3 style="margin-top:20px">Links</h3>
           <label>GitHub repository * <span class="mini">(public, or invite the organisers)</span></label><input name="github" placeholder="https://github.com/team/project">
-          <div class="row"><div><label>Live demo URL</label><input name="demo" placeholder="https://…"></div><div><label>Demo video URL (YouTube / Drive / Loom)</label><input name="video" placeholder="https://…"></div></div>
-          <div class="row"><div><label>Pitch deck link * <span class="mini">(Canva recommended)</span></label><input name="deck" placeholder="https://www.canva.com/design/…"></div><div><label>Docs / report link</label><input name="docs" placeholder="Notion, Drive, README…"></div></div>
+          <!-- Demo, video, deck and docs links are no longer asked for; kept hidden so links a team saved earlier aren't wiped on save. -->
+          <input type="hidden" name="demo"><input type="hidden" name="video"><input type="hidden" name="deck"><input type="hidden" name="docs">
           <label>Anything else for the jury?</label><textarea name="extra" maxlength="1000" style="min-height:60px"></textarea>
           <div id="subMsg"></div>
           <div class="flex" style="margin-top:12px">
